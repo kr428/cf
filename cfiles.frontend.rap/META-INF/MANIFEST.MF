@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: frontend
+Bundle-SymbolicName: cfiles.frontend.rap;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: cfiles.frontend.rap.Activator
+Require-Bundle: org.eclipse.rap.ui,
+ org.eclipse.equinox.http.registry;bundle-version="1.1.100"
+Bundle-ActivationPolicy: lazy
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Import-Package: javax.servlet;version="2.4.0",
+ javax.servlet.http;version="2.4.0",
+ org.jcouchdb.db,
+ org.jcouchdb.document,
+ org.jcouchdb.exception,
+ org.jcouchdb.util

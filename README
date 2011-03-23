@@ -1,0 +1,100 @@
+== 1 What is this ? ==
+
+"couchdb files" (cfiles for short) aims at providing an easy-to-use document store, sorting, retrieval system, thought to eventually serve as a foundation for a more specific web/browser based document management system. In its current state, this code is pretty experimental and a "technology sandbox". 
+
+== 2 License(s), legal stuff ==
+
+The sources found in this project are made publicly available using Eclipse Public License 1.0. This does not apply to the jars provided along with the "cfiles.wrapper.couchdb" bundle which incorporates binary artifacts of technology from various sources:
+
+* slf4j (http://www.slf4j.org), distributed under MIT license.
+* commons-codec (http://commons.apache.org/codec/), distributed under Apache Software License 2.0
+* commons-beanutils (http://commons.apache.org/beanutils/), distributed under Apache Software License 2.0 
+* commons-io (http://commons.apache.org/io/), distributed under Apache Software License 2.0 
+* httpclient and core (http://hc.apache.org/), distributed under Apache Software License 2.0 (AFAICT)
+* svenson (http://code.google.com/p/svenson/), distributed under New BSD License
+* jcouchdb (http://code.google.com/p/jcouchdb/), distributed under New BSD License
+
+That said, some of the projects in here (*.cli) depend upon additional third-party libraries fetched at build time using maven2, which might or might not be distributed under different licensing schemes. 
+
+
+== 3 Getting started ==
+
+
+(a) System "Architecture"
+
+The system is supposed to provide a document repository facility, optimized for batch-importing digital documents in a modestly straightforward process, doing whatever automatic processing / classification can be done to them, and making them available in a data store for easy access and retrieval. Thus, at the moment, there are several components involved, serving different purposes:
+
+* The "importer" cli tool, as the name implies, is a command-line driven batch importer tool to quickly feed loads of documents into the repository facility. The "importer" makes use of several open-source components such as apache tika or aperture for doing "things" to the document before being "imported".
+
+* The "repository" itself is Apache CouchDB 1.0.x, along with couchdb-lucene which allows for full-text queries across the structure.
+
+* The cfiles frontend (aka "docbrowser") is a browser based user interface used for browsing / querying / annotating the document repository. At the moment, this is pretty massively tailored towards the use case of browsing PDF file repositories having an Adobe PDF plugin installed on your local machine. Given this, most of the fulltext stuff so far works best.
+
+* The "exporter" cli tool is a structure to export all file and meta data off the repository in a machine-readable form for whichever purpose one could desire doing so.
+
+
+(b) Basic requirements and considerations
+
+* docbrowser ("cfiles.frontend.rap") is built using Eclipse Rich Ajax Platform (RAP) technology. You will need a recent build of Eclipse IDE, along with m2eclipse and RAP developer tooling. I use a 3.7 milestone at the moment. Likewise, you should have a local Eclipse RAP 1.4-Mx target platform installed and ready to use as this is not available here in the repository.
+
+* The *.cli projects themselves require some runnable maven installation at hand. Having m2eclipse installed, the embedded maven3 will do, too.
+
+* The backend CouchDB used is (so far hard-wired) assumed to be running on localhost. The database required by the tool, along with all design documents and views, will be created by either frontend or CLI applications upon first use. The fulltext indexing / search functionality so far relies upon couchdb-lucene (https://github.com/rnewson/couchdb-lucene) being installed and available locally, the fulltext indexing "views" used also are dynamically created upon use.
+
+
+(c) Getting things to work. 
+
+In a nutshell, how to get this code to actually do something:
+
+* Get your environment set up right (JDK 6.0, recent Eclipse+m2eclipse+RAP tooling+RAP target platform, Couchdb + lucene stuff, optionally maven, and obviously git for checking out things). Create a new Eclipse RAP target platform.
+
+* Check out all the modules into a (preferrably empty) Eclipse workspace. 
+
+* Use maven to build the *cli modules. Both of them end up building both .jar and -jar-with-dependencies.jar, the latter ones can be run using "java -jar" and will invoke meaningful launcher classes. You should consult the sources of cfiles.importer.cli.ImporterApp for command line options to be used for this. 
+
+* Use the "importer" to, well, import some meaningful files (preferrably PDFs, TXTs, HTMLs at the time being) into the structure. 
+
+* The "client.frontend.rap" contains a ready-to-run Eclipse launch configuration, which you should however review before running, especially talking about required / imported bundles. Run the application, and point your web browser to "http://localhost:10080/docbrowser".
+
+That's about all there is, so far. Feel free to play with it, a little, or hack on it, or whatever.
+
+
+== 4 State (aka features, issues, limitations) ==
+
+The current state of cfiles, so far, is, as pointed out before, a technology sandbox, initially started as a quick prototype (hack) to serve a very clearly outlined purpose. Eclipse RAP has been chosen as front-end technology due to some vague familiarity with it, and likewise CouchDB was picked as backend after a short test drive because I grew somewhat enthusiastic about its concept and feature set. All along the way, I grew enthusiastic about the "cfiles" idea, as well, and this is why I consider pushing this further. 
+
+
+Things I'd like to address more or less soon:
+
+* In the current state of things, document "content" (binary files) are kept outside of CouchDB in a dedicated file system folder for "archiving" purposes. This was/is the initial design which requested that documents in the "archive" should be, in the same structure, accessible through a CIFS share, too, and exposing a file system (via samba, in example) was the most straightforward approach of doing so. Eventually, the document files should be moved to CouchDB (making use of attachments), and "file system like" access should be done using something akin to WebDAV. Still wonder, though, how CouchDB will scale up with large sets of large documents, given it's all in one file.
+
+* At the moment, the "import" facility is only usable through the cli tool (which is the way it initially was supposed to). This should be extended to also allow for importing files using the "docbrowser" UI (or maybe a dedicated "docimporter", whatever).
+
+* So far, the "Version" browser which allows for, well, browsing different versions of documents (both metadata and associated files) relies upon internal CouchDB revisions ("_rev"). While this pragmatically works well on a single machine and knowing the database will never be compacted (so we can be sure the "_rev"s will be around all the time), this is definitely not "the way to do" things. There are some rather good (and straightforward) recommendations of how to deal with this issue, and I'll implement one or the other sooner or later.
+
+* While the RAP browser frontend works fine in various browsers on various platforms, the server-sided components so far have only been ran on various (Ubuntu) GNU/Linux hosts. Given CouchDB is available for other platforms as well, and knowing the rest of the code is built atop Java, it should per se be portable, but so far I never bothered trying. Chances are that at least the "importer" / "exporter" file handling code might contain some annoyances which don't behave well on non-Unix platforms. Feel free to file issues if you encounter any.
+
+* The RAP frontend generally needs some tweaking. At the moment, this is pretty much an "Eclipse RAP Mail Demo" project with code added. "Logging" is particularly ugly, so far. 
+
+* Generally, all data structures involved leave a lot of room for improvements...
+
+
+
+Mid-term changes and extensions:
+
+* Following the initial concept, the "importer" is supposed to run either cron- or event-triggered ("files dumped into a 'watched' import folder") and feed new data into the repository more or less continuously. However, inside the UI so far the only mechanism of becoming aware of added documents is to reload the structure tree. That's not really what one wants in a real-world environment. The idea is to exploit CouchDBs "changes" mechanism to, more or less frequently, make the UI update itself as soon as new information is available.
+
+* There should be a separation between "client" and "server" (backend), at the very least allowing for CouchDB, couchdb-lucene and the RAP UI to run on different hosts. Next step down that road is making use of the single-sourcing approach in Eclipse RCP/RAP to build web and desktop clients, which would require the system to become capable of handling both a distributed environment (this should be easier) and being ready for multi-user-scenarios (which might be more work).
+
+* Figure out a good concept to make the whole mess extensible. At the very least, the idea, sooner or later, is to have some sort of state-change controlled machinery to allow for automatically processing "things", documents, ... as soon as their (internal?) state changes. Use case: Send out a notification e-mail whenever a specific tag, key/value-entry ... gets added to a document.
+
+
+Long-term ideas:
+
+* Make it actually usable for both "single" and "multiple" users in small networks. Gather some experience how it behaves in a next-to-real-world scenario both in terms of usage and in terms of scalability, stability, security.
+
+* Exploit CouchDBs replication features to eventually hosting a decentralized cfiles structure. 
+
+* Consider different user interfaces, clients, a more powerful machine-to-machine interface to the structure, ... .
+
+There's a bunch of interesting things to be done. Feel free to add your $.02. :)
