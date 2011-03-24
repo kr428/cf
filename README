@@ -78,6 +78,8 @@ Things I'd like to address more or less soon:
 
 * Generally, all data structures involved leave a lot of room for improvements...
 
+* From an infrastructural / build point of view, I want both the frontend and the backend components to be buildable using maven, in order to make things a little easier. However, for that I still need to figure out a smart way of how to handle the Eclipse target platforms...
+
 
 
 Mid-term changes and extensions:
