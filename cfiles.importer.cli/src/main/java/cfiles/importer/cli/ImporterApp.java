@@ -19,6 +19,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.io.DirectoryWalker;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
@@ -57,6 +58,7 @@ public class ImporterApp {
 	private boolean index = false;
 	private boolean knownonly = false;
 	private boolean replaceParent = false;
+	private boolean attachToDoc = false;
 	private String targetPath = "";
 	private boolean relocateAndDelete = false;
 
@@ -149,6 +151,12 @@ public class ImporterApp {
 
 		if (options.hasOption("m")) {
 			this.targetPath = options.getOptionValue("m");
+		}
+
+		if (options.hasOption("a")) {
+			this.relocateAndDelete = false;
+			this.targetPath = "";
+			this.attachToDoc = true;
 		}
 
 		if (options.hasOption("ft")) {
@@ -284,6 +292,9 @@ public class ImporterApp {
 		final Option expunge = new Option("x",
 				"expunge source file (requires target path for move)");
 
+		final Option attach = new Option("a",
+				"attach to couchdb, no file system storage (ignores -x)");
+
 		final Option rootPrefix = OptionBuilder.withArgName("rootPrefix")
 				.hasArgs().withDescription("prefix to actual root path")
 				.create("p");
@@ -321,6 +332,7 @@ public class ImporterApp {
 				.create("database");
 
 		o.addOption(help);
+		o.addOption(attach);
 		o.addOption(recurse);
 		o.addOption(knownonly);
 		o.addOption(cut);
@@ -388,6 +400,11 @@ public class ImporterApp {
 
 	protected void insertToCouch(File file, Map<String, String> data)
 			throws IOException {
+
+		final Map<String, String> apertureData = new HashMap<String, String>();
+		apertureData.putAll(this.getApertureReader().getMetadata(
+				file.getAbsolutePath()));
+
 		final Map<String, Object> fileData = new HashMap<String, Object>();
 		fileData.put("size", "" + file.length());
 		fileData.put("lastmodified", "" + file.lastModified());
@@ -455,27 +472,32 @@ public class ImporterApp {
 		fileData.put("_id", id);
 		fileData.put("stored", file.getAbsolutePath());
 
-		boolean copied = false;
+		if (this.attachToDoc) {
 
-		if (!this.getTargetPath().isEmpty()) {
-			try {
-				final String newPath = this.copyFile(file.getAbsolutePath(),
-						path.replace(" ", "_"), oldRevision);
-				fileData.put("stored", newPath);
-				copied = true;
-				if (this.isRelocateAndDelete()) {
-					if (!file.getAbsolutePath().equals(
-							this.getFolderToStartWith().getAbsolutePath())) {
-						this.getFilesToDelete().add(file);
+		} else {
+			boolean copied = false;
+
+			if (!this.getTargetPath().isEmpty()) {
+				try {
+					final String newPath = this.copyFile(
+							file.getAbsolutePath(), path.replace(" ", "_"),
+							oldRevision);
+					fileData.put("stored", newPath);
+					copied = true;
+					if (this.isRelocateAndDelete()) {
+						if (!file.getAbsolutePath().equals(
+								this.getFolderToStartWith().getAbsolutePath())) {
+							this.getFilesToDelete().add(file);
+						}
 					}
+
+				} catch (Exception ex) {
+					logger.warn("file copy failed {} : {}",
+							file.getAbsolutePath(), ex.getMessage());
+
+					logger.debug("Trace: ", ex);
+
 				}
-
-			} catch (Exception ex) {
-				logger.warn("file copy failed {} : {}", file.getAbsolutePath(),
-						ex.getMessage());
-
-				logger.debug("Trace: ", ex);
-
 			}
 		}
 
@@ -502,41 +524,30 @@ public class ImporterApp {
 
 		this.getDatabase().createOrUpdateDocument(fileData);
 
-		try {
+		if (apertureData.containsKey("aperture.rdf")) {
 
-			final Map<String, String> apertureData = new HashMap<String, String>();
-
-			if (!copied) {
-				apertureData.putAll(this.getApertureReader().getMetadata(
-						file.getAbsolutePath()));
-			} else {
-				apertureData.putAll(this.getApertureReader().getMetadata(
-						"" + fileData.get("stored")));
+			String content = apertureData.get("aperture.rdf");
+			String realContent = content;
+			if (content.contains("plainTextContent>")) {
+				realContent = content.substring(
+						content.indexOf("plainTextContent>"),
+						content.lastIndexOf("plainTextContent>"));
 			}
 
-			if (apertureData.containsKey("aperture.rdf")) {
+			final Map<String, String> retrieveRev = this.getDatabase()
+					.getDocument(Map.class, "" + fileData.get("_id"));
+			final String rev = retrieveRev.get("_rev");
+			this.getDatabase().createAttachment("" + fileData.get("_id"), rev,
+					"content.txt", "text/plain", realContent.getBytes());
+		}
 
-				String content = apertureData.get("aperture.rdf");
-				String realContent = content;
-				if (content.contains("plainTextContent>")) {
-					realContent = content.substring(
-							content.indexOf("plainTextContent>"),
-							content.lastIndexOf("plainTextContent>"));
-				}
-
-				final Map<String, String> retrieveRev = this.getDatabase()
-						.getDocument(Map.class, "" + fileData.get("_id"));
-				final String rev = retrieveRev.get("_rev");
-				this.getDatabase().createAttachment("" + fileData.get("_id"),
-						rev, "content.txt", "text/plain",
-						realContent.getBytes());
-			}
-		} catch (Exception ex) {
-			logger.error("Aperture-Extraktion misslungen: {}, {}", file,
-					ex.getMessage());
-
-			logger.debug("Trace: ", ex);
-
+		if (this.attachToDoc) {
+			final Map<String, String> retrieveRev = this.getDatabase()
+					.getDocument(Map.class, "" + fileData.get("_id"));
+			final String rev = retrieveRev.get("_rev");
+			this.getDatabase().createAttachment("" + fileData.get("_id"), rev,
+					file.getName(), "application/octet-stream",
+					IOUtils.toByteArray(new FileInputStream(file)));
 		}
 
 	}
