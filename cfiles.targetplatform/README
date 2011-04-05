@@ -1,0 +1,8 @@
+This project is solely used to make the target platform required to run
+cfiles.frontend.rap accessible in a somewhat sane way. Please open the 
+provided "cfiles-rap-target.target" and make it your target platform 
+before going any further.
+
+Currently, this module contains the following binary artifacts:
+
+* plugins/rap-1.4.0-m6 : Eclipse RAP 1.4.0 M6 Runtime, distributed under EPL 1.0
