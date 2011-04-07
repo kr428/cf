@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+	version="3.0">
+	
+		<servlet>
+			<servlet-name>webdav</servlet-name>
+			<servlet-class>
+				net.sf.webdav.WebdavServlet
+			</servlet-class>
+			<init-param>
+				<param-name>ResourceHandlerImplementation</param-name>
+				<param-value>
+					cfiles.frontend.webdav.WebDAVDataStore
+				</param-value>
+			</init-param>
+			<init-param>
+				<param-name>rootpath</param-name>
+				<param-value>/opt/filer/Web/repository/</param-value>
+			</init-param>
+
+			<init-param>
+				<param-name>lazyFolderCreationOnPut</param-name>
+				<param-value>0</param-value>
+			</init-param>
+			<init-param>
+				<param-name>no-content-length-headers</param-name>
+				<param-value>0</param-value>
+			</init-param>
+			<init-param>
+				<param-name>default-index-file</param-name>
+				<param-value></param-value>
+			</init-param>
+			<init-param>
+				<param-name>instead-of-404</param-name>
+				<param-value></param-value>
+			</init-param>
+			<init-param>
+				<param-name>maxUploadSize</param-name>
+				<param-value>2000000000</param-value>
+				<!-- set to 2G -->
+			</init-param>
+		</servlet>
+
+
+		<servlet-mapping>
+			<servlet-name>webdav</servlet-name>
+			<url-pattern>/files</url-pattern>
+		</servlet-mapping>
+
+
+		<servlet-mapping>
+			<servlet-name>webdav</servlet-name>
+			<url-pattern>/files/*</url-pattern>
+		</servlet-mapping>
+
+
+		<session-config>
+			<session-timeout>
+				30
+			</session-timeout>
+		</session-config>
+</web-app>
